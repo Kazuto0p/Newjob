@@ -1,0 +1,68 @@
+import mongoose from 'mongoose';
+
+const userSchema = new mongoose.Schema(
+  {
+    profilepicture: {
+      type: String,
+      default: '/reshot-icon-user-profile-68ZR2F7VPJ.svg', // Match Header default
+    },
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true, // Ensure unique emails
+      trim: true,
+      lowercase: true,
+    },
+    auth0: {
+      type: Boolean, // Changed from String to Boolean to match Header logic
+      default: false, // True for Auth0 users, false for standard signup
+    },
+    phone: {
+      type: String,
+      default: null,
+    },
+    password: {
+      type: String,
+      default: null, // Only for non-Auth0 users
+      required: function () {
+        return !this.auth0; // Password required for non-Auth0 users
+      },
+    },
+    otp: {
+      type: Number,
+      default: null,
+    },
+    role: {
+      type: String,
+      enum: ['jobSeeker', 'recruiter'],
+      default: null, // Matches your schema
+    },
+    savedjobs: [
+      {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Job', // Reference to Job model
+        },
+        company: String,
+        title: String,
+        salary: String,
+        location: String,
+        type: String,
+        role: String,
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Index for faster email queries
+userSchema.index({ email: 1 });
+
+export default mongoose.models.User || mongoose.model('User', userSchema);
