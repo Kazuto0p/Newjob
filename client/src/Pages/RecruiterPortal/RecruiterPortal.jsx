@@ -5,11 +5,9 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../UserContext";
 
-
 const api = axios.create({
   baseURL: 'http://localhost:3000'
 });
-
 
 api.interceptors.response.use(
   (response) => {
@@ -22,12 +20,8 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       const errorCode = error.response?.data?.code;
-      
       if (errorCode === 'TOKEN_EXPIRED' || errorCode === 'TOKEN_MISSING') {
-       
         localStorage.removeItem('token');
-        
-      
         window.location.href = '/auth';
         return Promise.reject(error);
       }
@@ -55,7 +49,6 @@ function RecruiterPortal() {
       hasStoredToken: !!localStorage.getItem('token')
     });
 
-
     if (isAuthenticated && user) {
       try {
         console.log('Attempting to get fresh Auth0 token');
@@ -66,7 +59,6 @@ function RecruiterPortal() {
           }
         });
         console.log('Successfully got fresh Auth0 token');
- 
         localStorage.setItem('token', token);
         return token;
       } catch (error) {
@@ -74,13 +66,11 @@ function RecruiterPortal() {
           message: error.message,
           stack: error.stack
         });
-
         const storedToken = localStorage.getItem('token');
         if (storedToken) {
           console.log('Using stored token as fallback');
           return storedToken;
         }
-
         console.log('No stored token available, redirecting to auth');
         navigate('/auth');
         throw new Error("Authentication failed. Please log in again.");
@@ -93,7 +83,6 @@ function RecruiterPortal() {
       return token;
     }
     
-  
     console.log('No token available, redirecting to auth');
     navigate('/auth');
     throw new Error('No authentication token found. Please log in.');
@@ -149,7 +138,6 @@ function RecruiterPortal() {
         });
         
         setApplications(res.data.applications || []);
-        // console.log(applications)
       } catch (error) {
         console.error("Error fetching applications:", {
           status: error.response?.status,
@@ -171,7 +159,6 @@ function RecruiterPortal() {
           toast.error(errorMessage);
           
           if (errorCode === 'TOKEN_EXPIRED' || errorCode === 'TOKEN_INVALID') {
-            // Clear token and redirect to auth
             localStorage.removeItem('token');
             navigate("/auth");
           }
@@ -210,7 +197,6 @@ function RecruiterPortal() {
         }
       );
       
-      // Update local state
       setApplications(applications.map(app => 
         app._id === applicationId ? { ...app, status: newStatus } : app
       ));
@@ -245,22 +231,31 @@ function RecruiterPortal() {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          responseType: 'blob'
+          responseType: 'blob'  // Important: Tell axios to expect binary data
         }
       );
 
-
-      const file = new Blob([response.data], { type: response.headers['content-type'] });
+      // Create a blob URL from the response data
+      const file = new Blob([response.data], { 
+        type: response.headers['content-type'] 
+      });
       const fileURL = URL.createObjectURL(file);
       window.open(fileURL, '_blank');
+
+      // Clean up the blob URL after opening
+      setTimeout(() => {
+        URL.revokeObjectURL(fileURL);
+      }, 100);
     } catch (error) {
       console.error('Error viewing resume:', error);
       if (error.response?.status === 401) {
         const errorMessage = error.response?.data?.message || "Session expired. Please log in again.";
         toast.error(errorMessage);
         navigate("/auth");
+      } else if (error.response?.status === 404) {
+        toast.error(error.response?.data?.message || 'Resume not found');
       } else {
-        toast.error(error.response?.data?.message || 'Failed to view resume');
+        toast.error('Failed to view resume');
       }
     }
   };
@@ -279,25 +274,25 @@ function RecruiterPortal() {
         `/api/applications/${applicationId}/resume`,
         {
           headers: { 
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           },
-          responseType: 'blob'
+          responseType: 'blob'  // Important: Tell axios to expect binary data
         }
       );
 
+      // Get the filename from the Content-Disposition header or use a default
+      const contentDisposition = response.headers['content-disposition'];
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : 'resume';
 
+      // Create a blob URL and trigger download
       const blob = new Blob([response.data], { 
         type: response.headers['content-type'] 
       });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      
- 
-      const contentDisposition = response.headers['content-disposition'];
-      const filename = contentDisposition
-        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
-        : 'resume.pdf';
-      
       link.href = url;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
@@ -308,7 +303,15 @@ function RecruiterPortal() {
       toast.success('Resume downloaded successfully');
     } catch (error) {
       console.error('Error downloading resume:', error);
-      toast.error(error.response?.data?.message || 'Failed to download resume');
+      if (error.response?.status === 401) {
+        const errorMessage = error.response?.data?.message || "Session expired. Please log in again.";
+        toast.error(errorMessage);
+        navigate("/auth");
+      } else if (error.response?.status === 404) {
+        toast.error(error.response?.data?.message || 'Resume not found');
+      } else {
+        toast.error('Failed to download resume');
+      }
     }
   };
 
