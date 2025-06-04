@@ -20,7 +20,7 @@ const ReportModal = ({ job, onClose, onSubmit }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 Bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg w-11/12 max-w-md">
         <h3 className="text-xl font-bold mb-4">Report Job</h3>
         <p className="mb-2 text-gray-600">Job: {job.jobTitle} at {job.company}</p>
@@ -63,19 +63,38 @@ const HomePage = () => {
   const { userData } = useUser();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const response = await axios.get(`http://localhost:3000/api/jobs`);
-        setJobs(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch jobs. Please try again later.');
-        setLoading(false);
+  const fetchJobs = async (query = '') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const url = query
+        ? `http://localhost:3000/api/search?q=${encodeURIComponent(query)}`
+        : `http://localhost:3000/api/jobs`;
+      const response = await axios.get(url);
+      const fetchedJobs = query ? response.data.jobs : response.data;
+      setJobs(fetchedJobs || []);
+      if (!fetchedJobs || fetchedJobs.length === 0) {
+        setError('No jobs found.');
       }
-    };
-    fetchJobs();
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setError('Search endpoint not found. Please check the backend configuration.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to fetch jobs. Please try again later.');
+      }
+      console.error('Error fetching jobs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs(); // Fetch all jobs on initial load
   }, []);
+
+  const handleSearch = (query) => {
+    fetchJobs(query); // Fetch jobs based on search query
+  };
 
   const handleJobClick = (job) => {
     setSelectedJob(job);
@@ -105,7 +124,6 @@ const HomePage = () => {
           });
         } catch (error) {
           console.error('Error getting Auth0 token:', error);
-          // Fallback to regular token
           token = localStorage.getItem('token');
         }
       } else if (userData) {
@@ -150,9 +168,8 @@ const HomePage = () => {
       <Header />
       <Title />
       <Navigation />
-      <SearchBar />
+      <SearchBar onSearch={handleSearch} />
       <div className="flex flex-col lg:flex-row max-w-7xl mx-auto p-4 gap-4">
-        {/* Job Cards Column */}
         <div className="w-full lg:w-1/2">
           {loading ? (
             <div className="p-4 text-center text-gray-600">Loading jobs...</div>
@@ -182,7 +199,6 @@ const HomePage = () => {
             </div>
           )}
         </div>
-        {/* Job Details Panel */}
         <div className="w-full lg:w-1/2 bg-white p-6 rounded-lg shadow-md hidden lg:block">
           {selectedJob ? (
             <div>
@@ -221,7 +237,6 @@ const HomePage = () => {
             </div>
           )}
         </div>
-        {/* Mobile Job Details Modal */}
         {selectedJob && (
           <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-11/12 max-w-md">
@@ -248,7 +263,7 @@ const HomePage = () => {
                   onClick={handleReportClick}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M3 6a3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
                   </svg>
                   Report
                 </button>
@@ -256,7 +271,6 @@ const HomePage = () => {
             </div>
           </div>
         )}
-        {/* Report Modal */}
         {showReportModal && selectedJob && (
           <ReportModal
             job={selectedJob}

@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 
-const SearchBar = () => {
-  // State to manage the search input value
+const SearchBar = ({ onSearch }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Handler for input change
   const handleInputChange = (e) => {
     setSearchQuery(e.target.value);
   };
 
-  // Handler for search button click
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery);
-      // In a real app, you might trigger an API call or filter here
-      // Example: fetchJobs(searchQuery);
+      onSearch(searchQuery);
     } else {
-      console.log('Please enter a search query');
+      toast.info('Please enter a search query');
+      onSearch('');
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
   };
 
@@ -29,6 +32,7 @@ const SearchBar = () => {
           className="w-full p-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
           value={searchQuery}
           onChange={handleInputChange}
+          onKeyPress={handleKeyPress}
         />
         <svg
           className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
